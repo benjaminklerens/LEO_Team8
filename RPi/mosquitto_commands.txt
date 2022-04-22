@@ -1,0 +1,8 @@
+#publish led
+ mosquitto_pub -h localhost -p 1883 -u leoteam8 -P leoteam8 -t leoteam8/led -m (0 or 1)
+#publish status
+ mosquitto_pub -h localhost -p 1883 -u leoteam8 -P leoteam8 -t leoteam8/status -m (0 or 1)
+#subscribe sound 1 message
+ mosquitto_sub -d -h localhost -p 1883 -u leoteam8 -P leoteam8 -t leoteam8/sound -C 1
+#subscribe position 1 message
+ mosquitto_sub -d -h localhost -p 1883 -u leoteam8 -P leoteam8 -t leoteam8/postion -C 1
