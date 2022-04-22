@@ -207,7 +207,8 @@ void publish_data()
     {
       debug("Sound:MQTT ok");
     }
-    
+
+    delay(20);
     //publish to position topic
     if (! pos_mqtt_publish.publish(pos_payload))
     {
