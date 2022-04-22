@@ -44,7 +44,7 @@ void mqtt_connect();
 void print_wifi_status();
 void publish_data();
 void subscribe_led();
-void subscribe_status();
+
 
 
 //variables
@@ -59,7 +59,7 @@ Adafruit_MQTT_Publish sound_mqtt_publish = Adafruit_MQTT_Publish(&mqtt, MQTT_USE
 Adafruit_MQTT_Publish snr_mqtt_publish = Adafruit_MQTT_Publish(&mqtt, MQTT_USERNAME MQTT_TOPIC_WIFI_SNR);
 
 Adafruit_MQTT_Subscribe status_mqtt_subscribe = Adafruit_MQTT_Subscribe(&mqtt, MQTT_USERNAME MQTT_TOPIC_STATUS);
-Adafruit_MQTT_Subscribe led_mqtt_subscribe = Adafruit_MQTT_Subscribe(&mqtt, MQTT_USERNAME MQTT_TOPIC_STATUS);
+Adafruit_MQTT_Subscribe led_mqtt_subscribe = Adafruit_MQTT_Subscribe(&mqtt, MQTT_USERNAME MQTT_TOPIC_LED);
 
 uint32_t move_prev_time;
 uint32_t sense_prev_time;
@@ -82,6 +82,7 @@ void setup() {
   //subscribe to mqtt topics
   mqtt.subscribe(&status_mqtt_subscribe);
   mqtt.subscribe(&led_mqtt_subscribe);
+  
   //enable serial connection and begin boot process
   Serial.begin(115200);
   delay(10);
@@ -105,7 +106,8 @@ void loop() {
   //ensure that mqtt is connected
   mqtt_connect();
   //read topics from mqtt
-
+  subscribe_led();
+  
   //reset position after sensing all positions
   if (servo_pos > 180 - ANGLE_STEPS)
   {
@@ -241,8 +243,7 @@ void subscribe_led()
       if (sub == &led_mqtt_subscribe)
       {
         Serial.print("Received LED Mode: ");
-        Serial.println((char*)led_mqtt_subscribe.lastread);      
-      
+        Serial.println((char*)led_mqtt_subscribe.lastread);         
         // Switch on the LED if an 1 was received as first character
         if ((int)(led_mqtt_subscribe.lastread[0]) == 49)
         {
@@ -253,32 +254,18 @@ void subscribe_led()
         {
           digitalWrite(LED_PIN, LOW);
         }
-
       }
-    }
-  }
-}
 
-void subscribe_status()
-{
-  int16_t sub_timeout = 10;
-  Adafruit_MQTT_Subscribe* sub;
-  
-  if((WiFiMulti.run(conn_tout_ms) == WL_CONNECTED))
-  {   
-    while ((sub = mqtt.readSubscription(10))) 
-    {
       if (sub == &status_mqtt_subscribe)
       {
         Serial.print("Received Status Message: ");
         Serial.println((char*)status_mqtt_subscribe.lastread);      
-      
         //Setting system active depending on received message
-        if ((int)(led_mqtt_subscribe.lastread[0]) == 49)
+        if ((int)(status_mqtt_subscribe.lastread[0]) == 49)
         {
           active_sensing = 1;  
         }
-        if (led_mqtt_subscribe.lastread[0] == 48) 
+        if (status_mqtt_subscribe.lastread[0] == 48) 
         {
           active_sensing = 0;
         }
@@ -287,6 +274,7 @@ void subscribe_status()
     }
   }
 }
+
 
 void debug(const char *s)
 {
