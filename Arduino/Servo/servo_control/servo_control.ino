@@ -30,13 +30,14 @@
 //GPIO
 #define SERVO_PIN 14
 #define LED_PIN 5
-#define SOUND_SENSOR_PIN 4
+#define SOUND_PIN A0
 
 //timing
 #define SENSE_TIME 2000 // = Publish Time
 #define MOVE_TIME 2000
 #define SENSE_MOVE_SHIFT 1000
 #define ANGLE_STEPS 45
+
 
 //functions
 void debug(const char *s);
@@ -64,9 +65,11 @@ Adafruit_MQTT_Subscribe led_mqtt_subscribe = Adafruit_MQTT_Subscribe(&mqtt, MQTT
 uint32_t move_prev_time;
 uint32_t sense_prev_time;
 int16_t servo_pos = 0;
-int16_t sound = 0;
 uint8_t active_sensing = 0;
 
+int sound_value = 0;
+int sound_level = 0;
+int dif = 0;
 
 const uint16_t conn_tout_ms = 5000;
 
@@ -76,7 +79,7 @@ void setup() {
   sense_prev_time = millis();
   //set PinMode
   pinMode(LED_PIN,OUTPUT);
-  pinMode(SOUND_SENSOR_PIN,INPUT);
+//  pinMode(SOUND_SENSOR_PIN,INPUT);
   servo.attach(SERVO_PIN);
   
   //subscribe to mqtt topics
@@ -129,15 +132,25 @@ void loop() {
     if (millis() - move_prev_time >= SENSE_TIME)
     {
       sense_prev_time = millis();
-      sound = digitalRead(SOUND_SENSOR_PIN);
+      sound_value = analogRead(SOUND_PIN)-174;
+      Serial.print(sound_value);
+      dif = abs(sound_value-512);
+  
+      if(dif > 100)sound_level = 5;
+      else if(dif > 80)sound_level = 4;
+      else if(dif > 50)sound_level = 3;
+      else if(dif > 30)sound_level = 2;
+      else if(dif > 10)sound_level = 1;
+      else sound_level = 0;
+      
       publish_data();
     }    
     //check movement interval
     if (millis() - move_prev_time >= MOVE_TIME)
     {
       move_prev_time = millis();
-      servo_pos += ANGLE_STEPS;
       servo.write(servo_pos);
+      servo_pos += ANGLE_STEPS;
     }
 
   }
@@ -175,7 +188,7 @@ void publish_data()
   int snr = WiFi.RSSI();
   
   sprintf(pos_payload, "%ld", servo_pos);
-  sprintf(sound_payload, "%ld", sound);
+  sprintf(sound_payload, "%ld", sound_level);
   sprintf(snr_payload, "%ld", snr);
   
   Serial.print(millis());
