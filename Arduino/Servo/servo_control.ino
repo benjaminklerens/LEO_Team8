@@ -38,15 +38,12 @@
 #define SENSE_MOVE_SHIFT 1000
 #define ANGLE_STEPS 45
 
-
 //functions
 void debug(const char *s);
 void mqtt_connect();
 void print_wifi_status();
 void publish_data();
 void subscribe_led();
-
-
 
 //variables
 ESP8266WiFiMulti WiFiMulti;
@@ -85,10 +82,8 @@ void setup() {
   //subscribe to mqtt topics
   mqtt.subscribe(&status_mqtt_subscribe);
   mqtt.subscribe(&led_mqtt_subscribe);
-  
-  //enable serial connection and begin boot process
-  Serial.begin(115200);
-  delay(10);
+
+  Serial.begin(9600);
   debug("Boot");
   //set up wifi connection
   WiFi.persistent(false);
@@ -108,54 +103,24 @@ void setup() {
 void loop() {
   //ensure that mqtt is connected
   mqtt_connect();
-  //read topics from mqtt
-  subscribe_led();
-  
-  //reset position after sensing all positions
-  if (servo_pos > 180 - ANGLE_STEPS)
-  {
-    servo_pos = 0;
-    servo.write(servo_pos);
-    move_prev_time = millis()+SENSE_MOVE_SHIFT;
-    sense_prev_time = millis();
-  }
-  
-  //check if sensing is enabled
-  if(!active_sensing)
-  {
-    move_prev_time = millis()+SENSE_MOVE_SHIFT;
-    sense_prev_time = millis();
-    
-  }else
-  {
-    //check sensing interval
-    if (millis() - move_prev_time >= SENSE_TIME)
-    {
-      sense_prev_time = millis();
-      sound_value = analogRead(SOUND_PIN)-174;
-      Serial.print(sound_value);
-      dif = abs(sound_value-512);
-  
-      if(dif > 100)sound_level = 5;
-      else if(dif > 80)sound_level = 4;
-      else if(dif > 50)sound_level = 3;
-      else if(dif > 30)sound_level = 2;
-      else if(dif > 10)sound_level = 1;
-      else sound_level = 0;
-      
-      publish_data();
-    }    
-    //check movement interval
-    if (millis() - move_prev_time >= MOVE_TIME)
-    {
-      move_prev_time = millis();
-      servo.write(servo_pos);
-      servo_pos += ANGLE_STEPS;
-    }
 
-  }
+  sense_prev_time = millis();
+  sound_value = analogRead(SOUND_PIN)-174;
+  Serial.print(sound_value);
+  dif = abs(sound_value-512);
   
-  
+  if(dif > 100)sound_level = 5;
+  else if(dif > 80)sound_level = 4;
+  else if(dif > 50)sound_level = 3;
+  else if(dif > 30)sound_level = 2;
+  else if(dif > 10)sound_level = 1;
+  else sound_level = 0;
+      
+  publish_data();
+
+  move_prev_time = millis();
+  servo.write(servo_pos);
+  servo_pos += ANGLE_STEPS;
 
 }
 
@@ -184,12 +149,14 @@ void publish_data()
   char pos_payload[16];
   char sound_payload[16];
   char snr_payload[16];
-  
+  char status_payload[16];
   int snr = WiFi.RSSI();
   
   sprintf(pos_payload, "%ld", servo_pos);
   sprintf(sound_payload, "%ld", sound_level);
   sprintf(snr_payload, "%ld", snr);
+
+
   
   Serial.print(millis());
   Serial.print(" ");
@@ -201,7 +168,6 @@ void publish_data()
   Serial.println(sound_payload);
   Serial.print("WiFi SNR: ");
   Serial.println(snr_payload);
-
 
   Serial.print(millis());
   Serial.print(" ");
@@ -220,8 +186,7 @@ void publish_data()
     {
       debug("Sound:MQTT ok");
     }
-
-    delay(20);
+    
     //publish to position topic
     if (! pos_mqtt_publish.publish(pos_payload))
     {
@@ -240,8 +205,7 @@ void publish_data()
     else
     {
       debug("SNR:MQTT ok");
-    }
-    
+    }    
   }
 }
 
@@ -249,7 +213,7 @@ void subscribe_led()
 {
   int16_t sub_timeout = 10;
   Adafruit_MQTT_Subscribe* sub;
-  
+
   if((WiFiMulti.run(conn_tout_ms) == WL_CONNECTED))
   {   
     while ((sub = mqtt.readSubscription(10))) 
@@ -262,7 +226,7 @@ void subscribe_led()
         if ((int)(led_mqtt_subscribe.lastread[0]) == 49)
         {
           digitalWrite(LED_PIN, HIGH);
-          
+
         }
         if (led_mqtt_subscribe.lastread[0] == 48) 
         {
@@ -285,10 +249,9 @@ void subscribe_led()
         }
 
       }
-    }
+    }   
   }
 }
-
 
 void debug(const char *s)
 {
